@@ -15,6 +15,11 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
 
+        // Đảm bảo CORS chạy trước tất cả API middleware
+        $middleware->api(prepend: [
+            \Illuminate\Http\Middleware\HandleCors::class,
+        ]);
+
         // Đăng ký alias middleware
         $middleware->alias([
             'role' => \App\Http\Middleware\CheckRole::class,
