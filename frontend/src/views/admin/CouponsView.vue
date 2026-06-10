@@ -57,6 +57,10 @@
             <td>
               <div class="flex gap-2">
                 <button @click="openModal(c)" class="text-xs px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100">Sửa</button>
+                <button @click="sendCoupon(c)" :disabled="sendingId === c.id"
+                  class="text-xs px-3 py-1.5 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 disabled:opacity-50">
+                  {{ sendingId === c.id ? 'Đang gửi...' : 'Gửi KH' }}
+                </button>
                 <button @click="deleteCoupon(c)" class="text-xs px-3 py-1.5 bg-red-50 text-red-500 rounded-lg hover:bg-red-100">Xóa</button>
               </div>
             </td>
@@ -162,6 +166,7 @@ const showModal   = ref(false)
 const editItem    = ref(null)
 const modalSaving = ref(false)
 const modalErrors = ref({})
+const sendingId   = ref(null)
 
 const emptyForm = () => ({
   code: '', type: 'percent', value: null,
@@ -236,6 +241,16 @@ async function deleteCoupon(c) {
   if (!confirm(`Xóa mã giảm giá "${c.code}"?`)) return
   try { await api.delete(`/admin/coupons/${c.id}`); toast.success('Đã xóa!'); fetchCoupons() }
   catch (e) { toast.error(e.response?.data?.message || 'Không thể xóa.') }
+}
+
+async function sendCoupon(c) {
+  if (!confirm(`Gửi mã "${c.code}" đến tất cả khách hàng qua email?`)) return
+  sendingId.value = c.id
+  try {
+    const res = await api.post(`/admin/coupons/${c.id}/send`)
+    toast.success(res.data.message)
+  } catch (e) { toast.error(e.response?.data?.message || 'Gửi thất bại.') }
+  finally { sendingId.value = null }
 }
 
 async function toggleActive(c) {

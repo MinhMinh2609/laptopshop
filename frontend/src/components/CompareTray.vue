@@ -1,13 +1,5 @@
 <template>
   <teleport to="body">
-    <button
-      v-if="compareStore.count && !compareStore.popupOpen"
-      @click="compareStore.openPopup()"
-      class="fixed bottom-24 right-5 z-40 rounded-lg bg-slate-950 px-4 py-3 text-sm font-bold text-white shadow-2xl hover:bg-orange-600"
-    >
-      So sánh {{ compareStore.count }} sản phẩm
-    </button>
-
     <div v-if="compareStore.popupOpen" class="fixed inset-0 z-[70]">
       <div class="absolute inset-0 bg-slate-950/50" @click="compareStore.closePopup()"></div>
 

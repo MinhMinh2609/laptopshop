@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Coupon;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 
 class CouponController extends Controller
 {
@@ -116,6 +118,60 @@ class CouponController extends Controller
             'success' => true,
             'message' => $coupon->is_active ? 'Đã kích hoạt mã giảm giá.' : 'Đã tắt mã giảm giá.',
             'data'    => $coupon->fresh(),
+        ]);
+    }
+
+    // ─── GỬI MÃ GIẢM GIÁ CHO KHÁCH HÀNG QUA EMAIL ────────
+    public function sendToCustomers($id)
+    {
+        $coupon = Coupon::findOrFail($id);
+
+        if ($error = $coupon->validationError()) {
+            return response()->json([
+                'success' => false,
+                'message' => "Không thể gửi mã này: {$error}",
+            ], 422);
+        }
+
+        $users = User::where('role', 'user')
+            ->where('is_active', true)
+            ->whereNotNull('email')
+            ->get(['id', 'name', 'email']);
+
+        if ($users->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Không có khách hàng nào để gửi.',
+            ], 422);
+        }
+
+        $discountText = $coupon->type === 'percent'
+            ? 'giảm ' . rtrim(rtrim((string) $coupon->value, '0'), '.') . '%'
+            : 'giảm ' . number_format((float) $coupon->value, 0, ',', '.') . 'đ';
+
+        foreach ($users as $user) {
+            Mail::send([], [], function ($message) use ($user, $coupon, $discountText) {
+                $message->to($user->email, $user->name)
+                    ->subject('🎁 Mã giảm giá dành riêng cho bạn - Laptop Shop')
+                    ->html("
+                        <div style='font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:30px;'>
+                            <h2 style='color:#2563eb;'>🎁 Ưu Đãi Dành Cho Bạn</h2>
+                            <p>Xin chào <strong>{$user->name}</strong>,</p>
+                            <p>Laptop Shop gửi tặng bạn mã giảm giá <strong>{$discountText}</strong> cho đơn hàng tiếp theo:</p>
+                            <div style='text-align:center;margin:30px 0;'>
+                                <span style='display:inline-block;background:#2563eb;color:#fff;padding:14px 32px;border-radius:8px;font-weight:bold;font-size:20px;letter-spacing:2px;'>
+                                    {$coupon->code}
+                                </span>
+                            </div>
+                            <p style='color:#6b7280;font-size:13px;'>Nhập mã này tại trang Giỏ hàng hoặc Thanh toán để được áp dụng. Ưu đãi có thể giới hạn số lượng và thời gian sử dụng.</p>
+                        </div>
+                    ");
+            });
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Đã gửi mã '{$coupon->code}' đến {$users->count()} khách hàng.",
         ]);
     }
 }

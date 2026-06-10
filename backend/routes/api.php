@@ -133,6 +133,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         // Coupons Management
         Route::apiResource('coupons', AdminCouponController::class);
         Route::patch('/coupons/{id}/toggle-active', [AdminCouponController::class, 'toggleActive']);
+        Route::post('/coupons/{id}/send', [AdminCouponController::class, 'sendToCustomers']);
 
         // Orders Management
         Route::get('/orders',             [AdminOrderController::class, 'index']);
