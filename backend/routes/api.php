@@ -15,6 +15,8 @@ use App\Http\Controllers\Api\Shop\OrderController;
 use App\Http\Controllers\Api\Shop\ReviewController;
 use App\Http\Controllers\Api\Shop\WishlistController;
 use App\Http\Controllers\Api\Shop\CompareController;
+use App\Http\Controllers\Api\Shop\CouponController;
+use App\Http\Controllers\Api\Admin\CouponController as AdminCouponController;
 use App\Http\Controllers\Api\Payment\VNPayController;
 use App\Http\Controllers\Api\ChatbotController;
 
@@ -77,6 +79,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::delete('/',        [CartController::class, 'clear']);
     });
 
+    // Coupon - Áp dụng mã giảm giá cho giỏ hàng
+    Route::post('/coupons/apply', [CouponController::class, 'apply']);
+
     // Orders (User)
     Route::prefix('orders')->group(function () {
         Route::get('/',            [OrderController::class, 'index']);
@@ -124,6 +129,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
         // Brands Management
         Route::apiResource('brands', AdminBrandController::class);
+
+        // Coupons Management
+        Route::apiResource('coupons', AdminCouponController::class);
+        Route::patch('/coupons/{id}/toggle-active', [AdminCouponController::class, 'toggleActive']);
 
         // Orders Management
         Route::get('/orders',             [AdminOrderController::class, 'index']);

@@ -29,6 +29,7 @@ const AdminProducts    = () => import('@/views/admin/ProductsView.vue')
 const AdminProductForm = () => import('@/views/admin/ProductFormView.vue')
 const AdminCategories  = () => import('@/views/admin/CategoriesView.vue')
 const AdminBrands      = () => import('@/views/admin/BrandsView.vue')
+const AdminCoupons     = () => import('@/views/admin/CouponsView.vue')
 const AdminOrders      = () => import('@/views/admin/OrdersView.vue')
 const AdminOrderDetail = () => import('@/views/admin/OrderDetailView.vue')
 const AdminUsers       = () => import('@/views/admin/UsersView.vue')
@@ -205,6 +206,12 @@ const routes = [
         name: 'admin-brands',
         component: AdminBrands,
         meta: { title: 'Quản Lý Hãng' },
+      },
+      {
+        path: 'coupons',
+        name: 'admin-coupons',
+        component: AdminCoupons,
+        meta: { title: 'Quản Lý Mã Giảm Giá' },
       },
       {
         path: 'orders',

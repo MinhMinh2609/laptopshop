@@ -63,6 +63,12 @@
         <!-- Kinh doanh -->
         <p class="text-xs text-gray-500 uppercase font-semibold px-3 pt-4 pb-1">Kinh Doanh</p>
 
+        <RouterLink to="/admin/coupons"
+          class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg transition-colors mb-1"
+          :class="isActive('/admin/coupons') ? 'bg-primary-600 text-white font-medium' : 'text-gray-300 hover:text-white hover:bg-gray-700'">
+          <span>🎟️</span> Mã Giảm Giá
+        </RouterLink>
+
         <RouterLink to="/admin/orders"
           class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg transition-colors mb-1"
           :class="isActive('/admin/orders') ? 'bg-primary-600 text-white font-medium' : 'text-gray-300 hover:text-white hover:bg-gray-700'">

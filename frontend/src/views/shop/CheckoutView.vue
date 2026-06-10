@@ -85,16 +85,38 @@
             </div>
           </div>
 
+          <!-- Mã giảm giá -->
+          <div class="mb-4">
+            <label class="form-label">Mã giảm giá</label>
+            <div v-if="!cartStore.coupon" class="flex gap-2">
+              <input v-model="couponCode" @keyup.enter="applyCoupon" placeholder="Nhập mã giảm giá"
+                class="form-input flex-1" :class="{'border-red-400': couponError}" />
+              <button @click="applyCoupon" :disabled="couponLoading || !couponCode.trim()"
+                class="btn-outline px-4 whitespace-nowrap">
+                {{ couponLoading ? 'Đang...' : 'Áp dụng' }}
+              </button>
+            </div>
+            <div v-else class="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-3 py-2">
+              <span class="text-sm font-semibold text-green-700">🎟️ {{ cartStore.coupon.code }}</span>
+              <button @click="removeCoupon" class="text-xs text-red-500 hover:text-red-700">Bỏ mã</button>
+            </div>
+            <p v-if="couponError" class="form-error">{{ couponError }}</p>
+          </div>
+
           <div class="border-t pt-3 space-y-2 text-sm">
             <div class="flex justify-between text-gray-600">
               <span>Tạm tính</span><span>{{ formatPrice(cartStore.totalAmount) }}</span>
+            </div>
+            <div v-if="cartStore.coupon" class="flex justify-between text-green-600">
+              <span>Giảm giá ({{ cartStore.coupon.code }})</span>
+              <span>−{{ formatPrice(cartStore.discountAmount) }}</span>
             </div>
             <div class="flex justify-between text-green-600">
               <span>Phí vận chuyển</span><span>Miễn phí</span>
             </div>
             <div class="flex justify-between font-bold text-gray-800 text-base border-t pt-2 mt-2">
               <span>Tổng cộng</span>
-              <span class="text-primary-600">{{ formatPrice(cartStore.totalAmount) }}</span>
+              <span class="text-primary-600">{{ formatPrice(cartStore.finalAmount) }}</span>
             </div>
           </div>
 
@@ -130,6 +152,10 @@ const loading  = ref(false)
 const errorMsg = ref('')
 const errors   = ref({})
 
+const couponCode    = ref('')
+const couponLoading = ref(false)
+const couponError   = ref('')
+
 const form = ref({
   shipping_name:    authStore.user?.name || '',
   shipping_phone:   authStore.user?.phone || '',
@@ -149,6 +175,25 @@ const cities = ['Hà Nội','TP. Hồ Chí Minh','Đà Nẵng','Hải Phòng','C
 
 const formatPrice = (v) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(v)
 
+async function applyCoupon() {
+  couponError.value = ''
+  couponLoading.value = true
+  try {
+    await cartStore.applyCoupon(couponCode.value.trim())
+    toast.success('Áp dụng mã giảm giá thành công!')
+  } catch (e) {
+    couponError.value = e.response?.data?.message || 'Mã giảm giá không hợp lệ.'
+  } finally {
+    couponLoading.value = false
+  }
+}
+
+function removeCoupon() {
+  cartStore.removeCoupon()
+  couponCode.value  = ''
+  couponError.value = ''
+}
+
 async function placeOrder() {
   errorMsg.value = ''
   errors.value   = {}
@@ -156,7 +201,8 @@ async function placeOrder() {
 
   loading.value = true
   try {
-    const res   = await api.post('/orders', form.value)
+    const payload = { ...form.value, coupon_code: cartStore.coupon?.code || null }
+    const res   = await api.post('/orders', payload)
     const order = res.data.data
 
     // Nếu VNPay → tạo URL thanh toán
@@ -167,6 +213,7 @@ async function placeOrder() {
     }
 
     await cartStore.fetchCart()
+    cartStore.removeCoupon()
     toast.success('Đặt hàng thành công!')
     router.push(`/orders/${order.order_code}`)
   } catch (err) {

@@ -34,11 +34,44 @@
             </div>
 
             <!-- Bubble -->
-            <div class="max-w-[75%] px-3 py-2 rounded-2xl text-sm leading-relaxed whitespace-pre-line"
+            <div class="px-3 py-2 rounded-2xl text-sm leading-relaxed whitespace-pre-line"
               :class="msg.role === 'user'
-                ? 'bg-primary-600 text-white rounded-tr-sm'
-                : 'bg-white text-gray-800 shadow-sm border rounded-tl-sm'">
-              {{ msg.content }}
+                ? 'max-w-[75%] bg-primary-600 text-white rounded-tr-sm'
+                : [msg.products?.length ? 'max-w-[92%] w-full' : 'max-w-[75%]', 'bg-white text-gray-800 shadow-sm border rounded-tl-sm']">
+              <p>{{ msg.content }}</p>
+
+              <div v-if="msg.products?.length" class="mt-3 space-y-2 whitespace-normal">
+                <RouterLink
+                  v-for="product in msg.products"
+                  :key="product.id"
+                  :to="`/products/${product.slug}`"
+                  class="flex gap-3 rounded-lg border border-slate-100 bg-slate-50 p-2 transition hover:border-orange-200 hover:bg-orange-50"
+                >
+                  <img
+                    :src="productImage(product)"
+                    :alt="product.name"
+                    class="h-20 w-20 flex-shrink-0 rounded-md bg-white object-contain p-1"
+                  />
+
+                  <div class="min-w-0 flex-1">
+                    <p class="line-clamp-2 text-xs font-bold leading-4 text-slate-900">
+                      {{ product.name }}
+                    </p>
+                    <p class="mt-1 text-sm font-bold text-orange-600">
+                      {{ formatPrice(product.sale_price || product.price) }}
+                    </p>
+                    <div class="mt-1 flex flex-wrap gap-1">
+                      <span v-if="product.cpu" class="chat-spec">{{ shortCpu(product.cpu) }}</span>
+                      <span v-if="product.ram" class="chat-spec">{{ product.ram }}</span>
+                      <span v-if="product.storage" class="chat-spec">{{ product.storage }}</span>
+                      <span v-if="product.gpu" class="chat-spec">{{ shortGpu(product.gpu) }}</span>
+                    </div>
+                    <p :class="['mt-1 text-xs font-medium', product.stock > 0 ? 'text-emerald-700' : 'text-red-600']">
+                      {{ product.stock > 0 ? `Còn ${product.stock} sản phẩm` : 'Hết hàng' }}
+                    </p>
+                  </div>
+                </RouterLink>
+              </div>
             </div>
           </div>
 
@@ -66,6 +99,7 @@
         <!-- Input -->
         <div class="p-3 border-t bg-white flex gap-2">
           <input
+            ref="inputEl"
             v-model="inputMessage"
             @keyup.enter="sendMessage"
             type="text"
@@ -90,18 +124,22 @@
 </template>
 
 <script setup>
-import { ref, nextTick, onMounted } from 'vue'
+import { ref, nextTick, watch } from 'vue'
 import api from '@/services/api'
+import { imageUrl } from '@/utils/image'
 
 const isOpen          = ref(false)
 const loading         = ref(false)
 const inputMessage    = ref('')
 const messagesContainer = ref(null)
+const inputEl = ref(null)
 const messages        = ref([
   { role: 'assistant', content: 'Xin chào! Tôi là AI tư vấn laptop. Tôi có thể giúp bạn tìm laptop phù hợp với nhu cầu và ngân sách. Bạn cần tư vấn gì không? 😊' }
 ])
 
 const suggestions = ['Laptop dưới 15 triệu', 'Laptop gaming tốt nhất', 'Laptop cho sinh viên', 'So sánh cấu hình']
+
+const chatSessionId = getChatSessionId()
 
 async function sendMessage() {
   const text = inputMessage.value.trim()
@@ -116,13 +154,19 @@ async function sendMessage() {
     const res = await api.post('/chatbot/message', {
       message:  text,
       history:  messages.value.slice(-6).map(m => ({ role: m.role, content: m.content })),
+      session_id: chatSessionId,
     })
-    messages.value.push({ role: 'assistant', content: res.data.data.reply })
+    messages.value.push({
+      role: 'assistant',
+      content: res.data.data.reply,
+      products: res.data.data.products || [],
+    })
   } catch {
     messages.value.push({ role: 'assistant', content: 'Xin lỗi, tôi gặp sự cố. Vui lòng thử lại sau.' })
   } finally {
     loading.value = false
-    scrollToBottom()
+    await scrollToBottom()
+    focusInput()
   }
 }
 
@@ -131,15 +175,69 @@ function sendSuggestion(text) {
   sendMessage()
 }
 
+function getChatSessionId() {
+  const key = 'chatbot_session_id'
+  const current = localStorage.getItem(key)
+  if (current) return current
+
+  const next = window.crypto?.randomUUID?.() || `chat-${Date.now()}-${Math.random().toString(16).slice(2)}`
+  localStorage.setItem(key, next)
+  return next
+}
+
 async function scrollToBottom() {
   await nextTick()
   if (messagesContainer.value) {
     messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
   }
 }
+
+async function focusInput() {
+  await nextTick()
+  if (isOpen.value && !loading.value) {
+    inputEl.value?.focus()
+  }
+}
+
+function productImage(product) {
+  return imageUrl(product.thumbnail)
+}
+
+function formatPrice(value) {
+  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value ?? 0)
+}
+
+function shortCpu(cpu) {
+  return cpu
+    .replace('Intel Core ', '')
+    .replace('Intel core ', '')
+    .replace('AMD Ryzen ', 'R')
+    .substring(0, 18)
+}
+
+function shortGpu(gpu) {
+  return gpu
+    .replace('NVIDIA GeForce ', '')
+    .replace('NVIDIA ', '')
+    .substring(0, 18)
+}
+
+watch(isOpen, (open) => {
+  if (open) focusInput()
+})
 </script>
 
 <style scoped>
 .slide-up-enter-active, .slide-up-leave-active { transition: all 0.3s ease; }
 .slide-up-enter-from, .slide-up-leave-to { opacity: 0; transform: translateY(20px) scale(0.95); }
+.chat-spec {
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  background: #fff;
+  color: #475569;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 4px 5px;
+}
 </style>

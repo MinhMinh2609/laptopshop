@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Shop;
 
 use App\Http\Controllers\Controller;
 use App\Models\Cart;
+use App\Models\Coupon;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
@@ -69,6 +70,26 @@ class OrderController extends Controller
             }
         }
 
+        // Kiểm tra mã giảm giá (nếu có)
+        $coupon = null;
+        if ($request->coupon_code) {
+            $coupon = Coupon::where('code', strtoupper($request->coupon_code))->first();
+
+            if (!$coupon) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Mã giảm giá không tồn tại.',
+                ], 422);
+            }
+
+            if ($error = $coupon->validationError()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $error,
+                ], 422);
+            }
+        }
+
         DB::beginTransaction();
         try {
             // Tính tổng tiền
@@ -77,7 +98,16 @@ class OrderController extends Controller
             );
 
             $discountAmount = 0;
-            // TODO: Xử lý coupon_code ở đây nếu có
+            if ($coupon) {
+                if ($totalAmount < $coupon->min_order) {
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Đơn hàng tối thiểu ' . number_format($coupon->min_order, 0, ',', '.') . 'đ để áp dụng mã này.',
+                    ], 422);
+                }
+                $discountAmount = $coupon->calculateDiscount((float) $totalAmount);
+            }
 
             $finalAmount = $totalAmount - $discountAmount;
 
@@ -119,6 +149,11 @@ class OrderController extends Controller
 
             // Xóa giỏ hàng
             Cart::where('user_id', $userId)->delete();
+
+            // Tăng lượt sử dụng mã giảm giá
+            if ($coupon) {
+                $coupon->increment('usage_count');
+            }
 
             DB::commit();
 
