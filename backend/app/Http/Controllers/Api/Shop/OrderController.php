@@ -8,6 +8,7 @@ use App\Models\Coupon;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
+use App\Models\Review;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -34,7 +35,15 @@ class OrderController extends Controller
             ->where('user_id', $request->user()->id)
             ->firstOrFail();
 
-        return response()->json(['success' => true, 'data' => $order]);
+        $myReviews = Review::where('order_id', $order->id)
+            ->where('user_id', $request->user()->id)
+            ->get(['id', 'product_id', 'rating', 'comment'])
+            ->keyBy('product_id');
+
+        return response()->json([
+            'success' => true,
+            'data' => array_merge($order->toArray(), ['my_reviews' => $myReviews->toArray()]),
+        ]);
     }
 
     // ─── ĐẶT HÀNG ───────────────────────────────────────

@@ -31,17 +31,17 @@
           </div>
 
           <div class="mt-8 grid max-w-2xl grid-cols-3 gap-3 text-sm">
-            <div class="rounded-lg border border-white/10 bg-white/10 p-3">
-              <p class="font-bold text-white">0%</p>
-              <p class="mt-1 text-slate-300">trả góp</p>
+            <div class="rounded-lg border border-white/10 bg-white/10 p-4 text-center transition hover:border-orange-300/40 hover:bg-white/15">
+              <p class="font-bold text-white">3 phương thức</p>
+              <p class="mt-0.5 text-xs text-slate-300">thanh toán linh hoạt</p>
             </div>
-            <div class="rounded-lg border border-white/10 bg-white/10 p-3">
-              <p class="font-bold text-white">4 mục</p>
-              <p class="mt-1 text-slate-300">so sánh</p>
+            <div class="rounded-lg border border-white/10 bg-white/10 p-4 text-center transition hover:border-orange-300/40 hover:bg-white/15">
+              <p class="font-bold text-white">4 sản phẩm</p>
+              <p class="mt-0.5 text-xs text-slate-300">so sánh cấu hình</p>
             </div>
-            <div class="rounded-lg border border-white/10 bg-white/10 p-3">
-              <p class="font-bold text-white">Giá thật</p>
-              <p class="mt-1 text-slate-300">từ dữ liệu</p>
+            <div class="rounded-lg border border-white/10 bg-white/10 p-4 text-center transition hover:border-orange-300/40 hover:bg-white/15">
+              <p class="font-bold text-white">Mã giảm giá</p>
+              <p class="mt-0.5 text-xs text-slate-300">áp dụng tức thì</p>
             </div>
           </div>
         </div>
@@ -180,10 +180,10 @@ const heroProductImage = computed(() => {
 })
 
 const trustItems = [
-  { short: 'TG', title: 'Hỗ trợ trả góp', text: 'Phù hợp sinh viên và người mua cần chia nhỏ chi phí.' },
-  { short: 'SS', title: 'So sánh nhanh', text: 'Chọn trực tiếp từ card sản phẩm, xem bảng so sánh ngay trên màn hình.' },
-  { short: 'GH', title: 'Giao hàng linh hoạt', text: 'Khách có thể kiểm tra hàng và liên hệ shop khi cần hỗ trợ.' },
-  { short: 'KM', title: 'Khuyến mại dễ nhìn', text: 'Sản phẩm giảm giá được hiển thị nhãn sale và giá tiết kiệm rõ ràng.' },
+  { short: 'TT', title: 'Thanh toán đa dạng', text: 'Hỗ trợ COD, chuyển khoản ngân hàng và VNPay, chọn phương thức phù hợp khi đặt hàng.' },
+  { short: 'MG', title: 'Mã giảm giá', text: 'Nhập mã ưu đãi ngay tại giỏ hàng để được giảm trực tiếp vào tổng đơn.' },
+  { short: 'SS', title: 'So sánh laptop', text: 'Chọn trực tiếp từ card sản phẩm, xem bảng so sánh cấu hình ngay trên màn hình.' },
+  { short: 'DG', title: 'Đánh giá sản phẩm', text: 'Khách hàng đã mua có thể đánh giá, để lại nhận xét cho người mua sau.' },
 ]
 
 const categories = [

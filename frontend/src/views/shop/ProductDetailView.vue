@@ -268,10 +268,21 @@ async function toggleWishlist() {
   if (!authStore.isLoggedIn) { router.push('/login'); return }
   try {
     const res = await api.post(`/wishlist/${product.value.id}`)
-    inWishlist.value = res.data.data.in_wishlist
+    inWishlist.value = res.data.in_wishlist
     toast.success(res.data.message)
   } catch {}
 }
 
-onMounted(loadProduct)
+async function checkWishlist() {
+  if (!authStore.isLoggedIn) return
+  try {
+    const res = await api.get('/wishlist')
+    inWishlist.value = res.data.data.some((item) => item.product_id === product.value.id)
+  } catch {}
+}
+
+onMounted(async () => {
+  await loadProduct()
+  if (product.value) await checkWishlist()
+})
 </script>

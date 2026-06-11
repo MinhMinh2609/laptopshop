@@ -43,15 +43,25 @@
       <div class="bg-white rounded-2xl border p-5">
         <h3 class="font-bold text-gray-800 mb-4">Sản Phẩm Đã Đặt</h3>
         <div class="space-y-3">
-          <div v-for="item in order.items" :key="item.id" class="flex gap-4 py-3 border-b border-gray-50 last:border-0">
-            <img :src="item.product?.thumbnail" class="w-16 h-16 rounded-xl object-contain bg-gray-50 p-1"
-              @error="$event.target.src='/placeholder.jpg'" />
-            <div class="flex-1">
-              <p class="font-medium text-gray-800 text-sm">{{ item.product_name }}</p>
-              <p class="text-xs text-gray-400 mt-0.5">SKU: {{ item.product_sku }}</p>
-              <p class="text-sm text-gray-600 mt-1">{{ formatPrice(item.unit_price) }} x {{ item.quantity }}</p>
+          <div v-for="item in order.items" :key="item.id" class="py-3 border-b border-gray-50 last:border-0">
+            <div class="flex gap-4">
+              <img :src="item.product?.thumbnail" class="w-16 h-16 rounded-xl object-contain bg-gray-50 p-1"
+                @error="$event.target.src='/placeholder.jpg'" />
+              <div class="flex-1">
+                <p class="font-medium text-gray-800 text-sm">{{ item.product_name }}</p>
+                <p class="text-xs text-gray-400 mt-0.5">SKU: {{ item.product_sku }}</p>
+                <p class="text-sm text-gray-600 mt-1">{{ formatPrice(item.unit_price) }} x {{ item.quantity }}</p>
+              </div>
+              <p class="font-bold text-gray-800 self-center">{{ formatPrice(item.total_price) }}</p>
             </div>
-            <p class="font-bold text-gray-800 self-center">{{ formatPrice(item.total_price) }}</p>
+
+            <!-- Review action -->
+            <div v-if="order.status === 'delivered'" class="mt-2 pl-20">
+              <button @click="openReviewModal(item)"
+                class="text-xs font-semibold text-primary-600 hover:underline">
+                {{ myReview(item.product_id) ? '✏️ Sửa đánh giá' : '⭐ Viết đánh giá' }}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -116,6 +126,33 @@
       <p class="text-gray-500">Không tìm thấy đơn hàng</p>
       <RouterLink to="/orders" class="btn-primary mt-4 inline-block">Xem Đơn Hàng</RouterLink>
     </div>
+
+    <!-- Review modal -->
+    <div v-if="reviewModal.open" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+      @click.self="closeReviewModal">
+      <div class="bg-white rounded-2xl p-6 w-full max-w-md">
+        <h3 class="font-bold text-gray-800 mb-1">{{ reviewModal.id ? 'Sửa đánh giá' : 'Viết đánh giá' }}</h3>
+        <p class="text-sm text-gray-500 mb-4 line-clamp-1">{{ reviewModal.productName }}</p>
+
+        <div class="flex gap-1 mb-4 text-2xl">
+          <button v-for="i in 5" :key="i" type="button" @click="reviewModal.rating = i"
+            class="text-yellow-400 transition hover:scale-110">
+            {{ i <= reviewModal.rating ? '★' : '☆' }}
+          </button>
+        </div>
+
+        <textarea v-model="reviewModal.comment" rows="4" placeholder="Chia sẻ cảm nhận của bạn về sản phẩm..."
+          class="form-input resize-none"></textarea>
+
+        <div class="flex gap-3 mt-4">
+          <button @click="closeReviewModal" class="flex-1 btn-outline text-sm">Hủy</button>
+          <button @click="submitReview" :disabled="reviewModal.submitting || !reviewModal.rating"
+            class="flex-1 btn-primary text-sm disabled:opacity-50">
+            {{ reviewModal.submitting ? 'Đang gửi...' : 'Gửi đánh giá' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -173,6 +210,49 @@ async function payVNPay() {
     const res = await api.post('/payment/vnpay/create', { order_id: order.value.id })
     window.location.href = res.data.data.payment_url
   } catch { toast.error('Không thể tạo thanh toán.') }
+}
+
+const reviewModal = ref({ open: false, id: null, productId: null, productName: '', rating: 0, comment: '', submitting: false })
+
+function myReview(productId) {
+  return order.value?.my_reviews?.[productId] || null
+}
+
+function openReviewModal(item) {
+  const existing = myReview(item.product_id)
+  reviewModal.value = {
+    open: true,
+    id: existing?.id || null,
+    productId: item.product_id,
+    productName: item.product_name,
+    rating: existing?.rating || 0,
+    comment: existing?.comment || '',
+    submitting: false,
+  }
+}
+
+function closeReviewModal() {
+  reviewModal.value.open = false
+}
+
+async function submitReview() {
+  reviewModal.value.submitting = true
+  try {
+    const payload = { rating: reviewModal.value.rating, comment: reviewModal.value.comment }
+    if (reviewModal.value.id) {
+      await api.put(`/reviews/${reviewModal.value.id}`, payload)
+      order.value.my_reviews[reviewModal.value.productId] = { id: reviewModal.value.id, product_id: reviewModal.value.productId, ...payload }
+    } else {
+      const res = await api.post('/reviews', { ...payload, product_id: reviewModal.value.productId, order_id: order.value.id })
+      order.value.my_reviews[reviewModal.value.productId] = res.data.data
+    }
+    toast.success('Cảm ơn bạn đã đánh giá! Đánh giá sẽ hiển thị sau khi được duyệt.')
+    closeReviewModal()
+  } catch (e) {
+    toast.error(e.response?.data?.message || 'Không thể gửi đánh giá.')
+  } finally {
+    reviewModal.value.submitting = false
+  }
 }
 
 onMounted(async () => {
