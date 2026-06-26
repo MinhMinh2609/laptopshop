@@ -42,8 +42,8 @@ services:
       DB_DATABASE: ${DB_DATABASE:-laptop_shop_db}
       DB_USERNAME: ${DB_USERNAME:-laptop_user}
       DB_PASSWORD: ${DB_PASSWORD}
-      CACHE_DRIVER: database
-      SESSION_DRIVER: database
+      CACHE_DRIVER: file
+      SESSION_DRIVER: file
       QUEUE_CONNECTION: sync
       FILESYSTEM_DISK: public
       SANCTUM_STATEFUL_DOMAINS: ${SANCTUM_STATEFUL_DOMAINS}
