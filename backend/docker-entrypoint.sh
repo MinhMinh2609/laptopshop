@@ -11,7 +11,7 @@ chmod -R 775 /var/www/backend/storage /var/www/backend/bootstrap/cache
 # Cache config/routes/views for production performance
 php artisan config:cache
 php artisan route:cache
-php artisan view:cache
+php artisan view:cache || true
 
 # Run pending migrations (--force skips the production confirmation prompt)
 php artisan migrate --force
