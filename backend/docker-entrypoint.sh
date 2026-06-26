@@ -13,8 +13,9 @@ php artisan config:cache
 php artisan route:cache
 php artisan view:cache || true
 
-# Run pending migrations (--force skips the production confirmation prompt)
-php artisan migrate --force
+# Bỏ qua migrate vì init.sql đã tạo toàn bộ schema + seed data
+# Chỉ chạy migrate nếu có migration mới (thêm bảng sau này)
+php artisan migrate --force 2>/dev/null || true
 
 # Create storage symlink if it doesn't exist
 php artisan storage:link --force 2>/dev/null || true
