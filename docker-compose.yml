@@ -1,5 +1,3 @@
-version: '3.8'
-
 # =============================================================
 #  LAPTOP SHOP DATN - Docker Compose Configuration
 #  Services: Laravel (PHP-FPM) | Nginx | MySQL | phpMyAdmin | Vue.js
