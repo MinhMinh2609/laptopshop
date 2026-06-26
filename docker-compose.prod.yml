@@ -27,7 +27,7 @@ services:
     container_name: laptop_shop_app
     restart: unless-stopped
     volumes:
-      - storage_data:/var/www/backend/storage
+      - storage_data:/var/www/backend/storage/app/public
       - ./docker/php/php.prod.ini:/usr/local/etc/php/conf.d/custom.ini
     environment:
       APP_NAME: "Laptop Shop DATN"
@@ -63,16 +63,15 @@ services:
   #  2. Nginx (API Gateway cho Laravel)
   # ─────────────────────────────────────────────
   nginx:
-    image: nginx:1.25-alpine
+    build:
+      context: .
+      dockerfile: nginx.Dockerfile
     container_name: laptop_shop_nginx
     restart: unless-stopped
     ports:
-      - "${BACKEND_PORT:-80}:80"
+      - "${BACKEND_PORT:-8000}:80"
     volumes:
-      - ./backend/public:/var/www/backend/public       # Nginx chỉ cần public/ để check try_files
-      - storage_data:/var/www/backend/storage          # Serve ảnh upload từ /storage/
-      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
-      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - storage_data:/var/www/backend/storage/app/public
     networks:
       - laptop_shop_network
     depends_on:
