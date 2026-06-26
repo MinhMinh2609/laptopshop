@@ -1,0 +1,122 @@
+version: '3.8'
+
+# =============================================================
+#  LAPTOP SHOP - Production Docker Compose (dùng cho Dokploy)
+#  Các biến ${...} được set trong Dokploy > Environment Variables
+# =============================================================
+
+networks:
+  laptop_shop_network:
+    driver: bridge
+
+volumes:
+  mysql_data:
+    driver: local
+  storage_data:       # Lưu file upload của user (dùng chung app + nginx)
+    driver: local
+
+services:
+
+  # ─────────────────────────────────────────────
+  #  1. PHP-FPM (Laravel Backend)
+  # ─────────────────────────────────────────────
+  app:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: laptop_shop_app
+    restart: unless-stopped
+    volumes:
+      - storage_data:/var/www/backend/storage
+      - ./docker/php/php.prod.ini:/usr/local/etc/php/conf.d/custom.ini
+    environment:
+      APP_NAME: "Laptop Shop DATN"
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_KEY: ${APP_KEY}
+      APP_URL: ${APP_URL}
+      FRONTEND_URL: ${FRONTEND_URL}
+      DB_CONNECTION: mysql
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: ${DB_DATABASE:-laptop_shop_db}
+      DB_USERNAME: ${DB_USERNAME:-laptop_user}
+      DB_PASSWORD: ${DB_PASSWORD}
+      CACHE_DRIVER: database
+      SESSION_DRIVER: database
+      QUEUE_CONNECTION: sync
+      FILESYSTEM_DISK: public
+      SANCTUM_STATEFUL_DOMAINS: ${SANCTUM_STATEFUL_DOMAINS}
+      VNPAY_URL: ${VNPAY_URL:-https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
+      VNPAY_TMN_CODE: ${VNPAY_TMN_CODE:-}
+      VNPAY_HASH_SECRET: ${VNPAY_HASH_SECRET:-}
+      VNPAY_RETURN_URL: ${VNPAY_RETURN_URL}
+      AI_CHATBOT_API_KEY: ${AI_CHATBOT_API_KEY:-}
+      AI_CHATBOT_MODEL: ${AI_CHATBOT_MODEL:-gpt-3.5-turbo}
+    networks:
+      - laptop_shop_network
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # ─────────────────────────────────────────────
+  #  2. Nginx (API Gateway cho Laravel)
+  # ─────────────────────────────────────────────
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: laptop_shop_nginx
+    restart: unless-stopped
+    ports:
+      - "${BACKEND_PORT:-80}:80"
+    volumes:
+      - ./backend/public:/var/www/backend/public       # Nginx chỉ cần public/ để check try_files
+      - storage_data:/var/www/backend/storage          # Serve ảnh upload từ /storage/
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf
+    networks:
+      - laptop_shop_network
+    depends_on:
+      - app
+
+  # ─────────────────────────────────────────────
+  #  3. MySQL Database
+  # ─────────────────────────────────────────────
+  db:
+    image: mysql:8.0
+    container_name: laptop_shop_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_DATABASE:-laptop_shop_db}
+      MYSQL_USER: ${DB_USERNAME:-laptop_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - laptop_shop_network
+
+  # ─────────────────────────────────────────────
+  #  4. Vue.js Frontend (static, served by Nginx)
+  #  VITE_API_URL / VITE_BACKEND_URL được truyền
+  #  qua build args vì Vite bake chúng lúc build
+  # ─────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL}
+        VITE_BACKEND_URL: ${VITE_BACKEND_URL}
+    container_name: laptop_shop_frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    networks:
+      - laptop_shop_network
