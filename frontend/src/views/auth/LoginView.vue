@@ -60,13 +60,6 @@
           <RouterLink to="/forgot-password" class="text-xs text-primary-600 hover:underline">Quên mật khẩu?</RouterLink>
         </div>
 
-        <!-- Demo account -->
-        <div class="bg-blue-50 border border-blue-100 rounded-xl p-3 text-xs text-blue-700 mb-5">
-          <p class="font-semibold mb-1">🔑 Tài khoản Admin demo:</p>
-          <p>Email: <span class="font-mono">admin@laptopshop.com</span></p>
-          <p>Password: <span class="font-mono">Admin@123456</span></p>
-        </div>
-
         <p class="text-center text-sm text-gray-500">
           Chưa có tài khoản?
           <RouterLink to="/register" class="text-primary-600 font-semibold hover:underline">Đăng ký ngay</RouterLink>
