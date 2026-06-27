@@ -199,11 +199,11 @@ class ChatbotController extends Controller
             return 'Hiện chưa có sản phẩm đang bán trong database.';
         }
 
-        return $products->map(fn($p) =>
-            "- ID: {$p->id} | {$p->name} | Hãng: {$p->brand?->name ?? 'N/A'} | Giá: " .
-            number_format($p->sale_price ?? $p->price) .
-            "đ | CPU: {$p->cpu} | RAM: {$p->ram} | SSD: {$p->storage} | GPU: {$p->gpu} | Màn hình: {$p->display} | Tồn kho: {$p->stock} | Link: /products/{$p->slug}"
-        )->join("\n");
+        return $products->map(function ($p) {
+            $brand = $p->brand?->name ?? 'N/A';
+            $price = number_format($p->sale_price ?? $p->price);
+            return "- ID: {$p->id} | {$p->name} | Hãng: {$brand} | Giá: {$price}đ | CPU: {$p->cpu} | RAM: {$p->ram} | SSD: {$p->storage} | GPU: {$p->gpu} | Màn hình: {$p->display} | Tồn kho: {$p->stock} | Link: /products/{$p->slug}";
+        })->join("\n");
     }
 
     private function formatProductCards($products): array
