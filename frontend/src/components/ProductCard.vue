@@ -25,9 +25,9 @@
       </p>
 
       <div class="mt-3 flex min-h-[3.75rem] flex-wrap content-start gap-1.5">
-        <span v-if="product.cpu" class="spec-chip">{{ shortCpu }}</span>
-        <span v-if="product.ram" class="spec-chip">{{ product.ram }}</span>
-        <span v-if="product.storage" class="spec-chip">{{ product.storage }}</span>
+        <span v-if="product.cpu" class="spec-chip spec-chip-cpu">{{ shortCpu }}</span>
+        <span v-if="product.ram" class="spec-chip spec-chip-ram">{{ product.ram }}</span>
+        <span v-if="product.storage" class="spec-chip spec-chip-storage">{{ product.storage }}</span>
       </div>
 
       <div class="mt-4">
