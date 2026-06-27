@@ -51,8 +51,8 @@ services:
       VNPAY_TMN_CODE: ${VNPAY_TMN_CODE:-}
       VNPAY_HASH_SECRET: ${VNPAY_HASH_SECRET:-}
       VNPAY_RETURN_URL: ${VNPAY_RETURN_URL}
-      AI_CHATBOT_API_KEY: ${AI_CHATBOT_API_KEY:-}
-      AI_CHATBOT_MODEL: ${AI_CHATBOT_MODEL:-gpt-3.5-turbo}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.0-flash}
     networks:
       - laptop_shop_network
     depends_on:
