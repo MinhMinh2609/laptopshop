@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 
 const STORAGE_KEY = 'compare_products'
+export const MAX_COMPARE = 3
 
 export const useCompareStore = defineStore('compare', {
   state: () => ({
@@ -20,7 +21,7 @@ export const useCompareStore = defineStore('compare', {
 
       try {
         const raw = localStorage.getItem(STORAGE_KEY)
-        this.items = raw ? JSON.parse(raw) : []
+        this.items = raw ? JSON.parse(raw).slice(0, MAX_COMPARE) : []
       } catch {
         this.items = []
       }
@@ -38,7 +39,7 @@ export const useCompareStore = defineStore('compare', {
         return { ok: false, reason: 'exists' }
       }
 
-      if (this.items.length >= 4) {
+      if (this.items.length >= MAX_COMPARE) {
         return { ok: false, reason: 'limit' }
       }
 

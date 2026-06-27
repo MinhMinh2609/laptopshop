@@ -46,6 +46,7 @@ Route::prefix('shop')->group(function () {
 
 // Payment Callback (VNPay gọi về - hỗ trợ cả GET và POST)
 Route::match(['get', 'post'], '/payment/vnpay/callback', [VNPayController::class, 'callback']);
+Route::match(['get', 'post'], '/payment/vnpay/ipn',      [VNPayController::class, 'callback']);
 Route::match(['get', 'post'], '/payment/vnpay/return',   [VNPayController::class, 'return']);
 
 // Chatbot Public
@@ -88,6 +89,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('/',           [OrderController::class, 'store']);
         Route::get('/{orderCode}', [OrderController::class, 'show']);
         Route::post('/{id}/cancel',[OrderController::class, 'cancel']);
+        Route::delete('/{id}',     [OrderController::class, 'destroy']);
     });
 
     // Payment

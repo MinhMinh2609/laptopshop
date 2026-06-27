@@ -26,13 +26,12 @@ class ReviewController extends Controller
     {
         $request->validate([
             'product_id' => 'required|exists:products,id',
-            'order_id'   => 'nullable|exists:orders,id',
+            'order_id'   => 'required|exists:orders,id',
             'rating'     => 'required|integer|min:1|max:5',
             'comment'    => 'nullable|string|max:1000',
         ]);
 
         // Kiểm tra đã mua hàng chưa (nếu có order_id)
-        if ($request->order_id) {
             $purchased = Order::where('id', $request->order_id)
                 ->where('user_id', auth()->id())
                 ->where('status', 'delivered')
@@ -45,7 +44,6 @@ class ReviewController extends Controller
                     'message' => 'Bạn chỉ có thể đánh giá sản phẩm đã mua và đã giao.',
                 ], 422);
             }
-        }
 
         $review = Review::create([
             'product_id'  => $request->product_id,

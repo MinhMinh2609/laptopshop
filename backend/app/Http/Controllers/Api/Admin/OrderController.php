@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class OrderController extends Controller
 {
@@ -50,7 +51,7 @@ class OrderController extends Controller
             'status' => 'required|in:pending,confirmed,processing,shipped,delivered,cancelled,refunded',
         ]);
 
-        $order = Order::findOrFail($id);
+        $order = Order::with('items')->findOrFail($id);
 
         // Không cho phép quay lại trạng thái đã hủy/hoàn tiền
         if (in_array($order->status, ['cancelled', 'refunded'])) {
@@ -60,17 +61,28 @@ class OrderController extends Controller
             ], 422);
         }
 
-        $order->update(['status' => $request->status]);
+        DB::transaction(function () use ($order, $request) {
+            if (in_array($request->status, ['cancelled', 'refunded'])) {
+                $order->restoreStock();
+            }
 
-        // Nếu delivered thì cập nhật payment_status = paid (với COD)
-        if ($request->status === 'delivered' && $order->payment_method === 'cod') {
-            $order->update(['payment_status' => 'paid']);
-        }
+            $updates = ['status' => $request->status];
+
+            if ($request->status === 'delivered' && $order->payment_method === 'cod') {
+                $updates['payment_status'] = 'paid';
+            }
+
+            if ($request->status === 'refunded') {
+                $updates['payment_status'] = 'refunded';
+            }
+
+            $order->update($updates);
+        });
 
         return response()->json([
             'success' => true,
             'message' => 'Cập nhật trạng thái đơn hàng thành công!',
-            'data'    => $order->fresh(),
+            'data'    => $order->fresh(['items.product:id,name,thumbnail,sku', 'user:id,name,email,phone,address']),
         ]);
     }
 }

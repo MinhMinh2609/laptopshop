@@ -1,5 +1,5 @@
 <?php
-// app/Http/Controllers/Api/Payment/VNPayController.php
+
 namespace App\Http\Controllers\Api\Payment;
 
 use App\Http\Controllers\Controller;
@@ -21,7 +21,6 @@ class VNPayController extends Controller
         $this->returnUrl  = config('services.vnpay.return_url', env('VNPAY_RETURN_URL'));
     }
 
-    // ─── TẠO URL THANH TOÁN VNPAY ────────────────────────
     public function create(Request $request)
     {
         $request->validate([
@@ -34,7 +33,7 @@ class VNPayController extends Controller
             ->firstOrFail();
 
         $txnRef  = $order->order_code . '_' . time();
-        $amount  = (int)($order->final_amount * 100); // VNPay tính theo đơn vị đồng x100
+        $amount  = (int) ($order->final_amount * 100);
 
         $inputData = [
             'vnp_Version'    => '2.1.0',
@@ -56,59 +55,120 @@ class VNPayController extends Controller
         $hmac   = hash_hmac('sha512', $query, $this->hashSecret);
         $payUrl = $this->vnpUrl . '?' . $query . '&vnp_SecureHash=' . $hmac;
 
-        // Lưu txnRef để đối soát
         $order->update(['vnpay_txn_ref' => $txnRef]);
 
         return response()->json([
-            'success'  => true,
-            'data'     => ['payment_url' => $payUrl],
-            'message'  => 'Tạo URL thanh toán VNPay thành công.',
+            'success' => true,
+            'data'    => ['payment_url' => $payUrl],
+            'message' => 'Tạo URL thanh toán VNPay thành công.',
         ]);
     }
 
-    // ─── CALLBACK TỪ VNPAY ───────────────────────────────
     public function return(Request $request)
+    {
+        $result = $this->handleVnpayResult($request);
+        $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
+        $orderCode = $result['order_code'] ?? '';
+
+        if (!$result['success']) {
+            return redirect($frontendUrl . '/payment/failed?order=' . $orderCode . '&code=' . $result['code']);
+        }
+
+        return redirect($frontendUrl . '/payment/success?order=' . $orderCode);
+    }
+
+    public function callback(Request $request)
+    {
+        $result = $this->handleVnpayResult($request);
+
+        return response()->json([
+            'RspCode' => $result['ipn_code'],
+            'Message' => $result['message'],
+        ]);
+    }
+
+    private function handleVnpayResult(Request $request): array
     {
         $inputData = $request->all();
         $secureHash = $inputData['vnp_SecureHash'] ?? '';
         unset($inputData['vnp_SecureHash'], $inputData['vnp_SecureHashType']);
 
         ksort($inputData);
-        $query    = http_build_query($inputData);
-        $myHash   = hash_hmac('sha512', $query, $this->hashSecret);
+        $query  = http_build_query($inputData);
+        $myHash = hash_hmac('sha512', $query, $this->hashSecret);
 
-        if ($myHash !== $secureHash) {
-            return response()->json(['success' => false, 'message' => 'Chữ ký không hợp lệ.'], 400);
+        if (!hash_equals($myHash, $secureHash)) {
+            return [
+                'success' => false,
+                'code' => '97',
+                'ipn_code' => '97',
+                'message' => 'Invalid signature',
+            ];
         }
 
-        $txnRef      = $inputData['vnp_TxnRef'];
-        $responseCode = $inputData['vnp_ResponseCode'];
-        $orderCode   = explode('_', $txnRef)[0];
+        $txnRef = $inputData['vnp_TxnRef'] ?? '';
+        $responseCode = $inputData['vnp_ResponseCode'] ?? '';
+        $transactionStatus = $inputData['vnp_TransactionStatus'] ?? $responseCode;
+        $orderCode = explode('_', $txnRef)[0] ?? '';
 
         $order = Order::where('order_code', $orderCode)->first();
 
         if (!$order) {
-            return response()->json(['success' => false, 'message' => 'Đơn hàng không tồn tại.'], 404);
+            return [
+                'success' => false,
+                'code' => '01',
+                'ipn_code' => '01',
+                'message' => 'Order not found',
+                'order_code' => $orderCode,
+            ];
         }
 
-        if ($responseCode === '00') {
-            // Thanh toán thành công
-            $order->update([
-                'payment_status' => 'paid',
-                'status'         => 'confirmed',
-            ]);
-
-            // Redirect về frontend với thông báo thành công
-            return redirect(env('FRONTEND_URL') . '/payment/success?order=' . $orderCode);
-        } else {
-            // Thanh toán thất bại
-            return redirect(env('FRONTEND_URL') . '/payment/failed?order=' . $orderCode . '&code=' . $responseCode);
+        if ($order->vnpay_txn_ref !== $txnRef) {
+            return [
+                'success' => false,
+                'code' => '02',
+                'ipn_code' => '02',
+                'message' => 'TxnRef mismatch',
+                'order_code' => $orderCode,
+            ];
         }
-    }
 
-    public function callback(Request $request)
-    {
-        // IPN URL - VNPay gọi ngầm để cập nhật trạng thái
-        return $this->return($request);
+        $paidAmount = (int) ($inputData['vnp_Amount'] ?? 0);
+        $expectedAmount = (int) ($order->final_amount * 100);
+
+        if ($paidAmount !== $expectedAmount) {
+            return [
+                'success' => false,
+                'code' => '04',
+                'ipn_code' => '04',
+                'message' => 'Invalid amount',
+                'order_code' => $orderCode,
+            ];
+        }
+
+        if ($responseCode === '00' && $transactionStatus === '00') {
+            if ($order->payment_status !== 'paid') {
+                $order->update([
+                    'payment_status' => 'paid',
+                    'status' => 'confirmed',
+                ]);
+            }
+
+            return [
+                'success' => true,
+                'code' => '00',
+                'ipn_code' => '00',
+                'message' => 'Confirm Success',
+                'order_code' => $orderCode,
+            ];
+        }
+
+        return [
+            'success' => false,
+            'code' => $responseCode ?: '99',
+            'ipn_code' => '00',
+            'message' => 'Payment failed or cancelled',
+            'order_code' => $orderCode,
+        ];
     }
 }

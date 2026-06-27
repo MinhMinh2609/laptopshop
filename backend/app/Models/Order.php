@@ -19,4 +19,13 @@ class Order extends Model
 
     public function user()  { return $this->belongsTo(User::class); }
     public function items() { return $this->hasMany(OrderItem::class); }
+
+    public function restoreStock(): void
+    {
+        foreach ($this->items as $item) {
+            Product::where('id', $item->product_id)
+                ->increment('stock', $item->quantity);
+        }
+    }
+
 }

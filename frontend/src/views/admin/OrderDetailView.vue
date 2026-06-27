@@ -128,8 +128,9 @@ const paymentLabel = (m) => ({cod:'COD',vnpay:'VNPay',bank_transfer:'Chuyển kh
 
 async function updateStatus() {
   try {
-    await api.patch(`/admin/orders/${order.value.id}/status`, { status: newStatus.value })
-    order.value.status = newStatus.value
+    const res = await api.patch(`/admin/orders/${order.value.id}/status`, { status: newStatus.value })
+    order.value = res.data.data
+    newStatus.value = order.value.status
     toast.success('Cập nhật trạng thái thành công!')
   } catch (e) { toast.error(e.response?.data?.message || 'Thao tác thất bại.') }
 }

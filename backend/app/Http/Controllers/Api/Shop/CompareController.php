@@ -13,7 +13,7 @@ class CompareController extends Controller
     public function compare(Request $request)
     {
         $request->validate([
-            'ids'   => 'required|array|min:2|max:4',
+            'ids'   => 'required|array|min:2|max:3',
             'ids.*' => 'integer|exists:products,id',
         ]);
 

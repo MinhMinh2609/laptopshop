@@ -1,5 +1,5 @@
 <?php
-// app/Http/Controllers/Api/Shop/OrderController.php
+
 namespace App\Http\Controllers\Api\Shop;
 
 use App\Http\Controllers\Controller;
@@ -15,7 +15,6 @@ use Illuminate\Support\Str;
 
 class OrderController extends Controller
 {
-    // ─── DANH SÁCH ĐƠN HÀNG CỦA USER ───────────────────
     public function index(Request $request)
     {
         $orders = Order::with(['items.product:id,name,thumbnail'])
@@ -27,7 +26,6 @@ class OrderController extends Controller
         return response()->json(['success' => true, 'data' => $orders]);
     }
 
-    // ─── CHI TIẾT ĐƠN HÀNG ──────────────────────────────
     public function show(Request $request, $orderCode)
     {
         $order = Order::with(['items.product:id,name,thumbnail,sku'])
@@ -46,7 +44,6 @@ class OrderController extends Controller
         ]);
     }
 
-    // ─── ĐẶT HÀNG ───────────────────────────────────────
     public function store(Request $request)
     {
         $request->validate([
@@ -59,27 +56,15 @@ class OrderController extends Controller
             'coupon_code'      => 'nullable|string',
         ]);
 
-        $userId    = $request->user()->id;
-        $cartItems = Cart::with('product')->where('user_id', $userId)->get();
+        $userId = $request->user()->id;
 
-        if ($cartItems->isEmpty()) {
+        if (!Cart::where('user_id', $userId)->exists()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Giỏ hàng của bạn đang trống.',
             ], 422);
         }
 
-        // Kiểm tra tồn kho từng sản phẩm
-        foreach ($cartItems as $item) {
-            if ($item->product->stock < $item->quantity) {
-                return response()->json([
-                    'success' => false,
-                    'message' => "Sản phẩm '{$item->product->name}' chỉ còn {$item->product->stock} trong kho.",
-                ], 422);
-            }
-        }
-
-        // Kiểm tra mã giảm giá (nếu có)
         $coupon = null;
         if ($request->coupon_code) {
             $coupon = Coupon::where('code', strtoupper($request->coupon_code))->first();
@@ -101,9 +86,45 @@ class OrderController extends Controller
 
         DB::beginTransaction();
         try {
-            // Tính tổng tiền
-            $totalAmount = $cartItems->sum(fn($i) =>
-                ($i->product->sale_price ?? $i->product->price) * $i->quantity
+            $cartItems = Cart::where('user_id', $userId)->get();
+
+            if ($cartItems->isEmpty()) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Giỏ hàng của bạn đang trống.',
+                ], 422);
+            }
+
+            $productIds = $cartItems->pluck('product_id')->sort()->values();
+            $products = Product::whereIn('id', $productIds)
+                ->where('is_active', 1)
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('id');
+
+            foreach ($cartItems as $item) {
+                $product = $products->get($item->product_id);
+
+                if (!$product) {
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Sản phẩm trong giỏ hàng không tồn tại hoặc đã ngừng bán.',
+                    ], 422);
+                }
+
+                if ($product->stock < $item->quantity) {
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Sản phẩm '{$product->name}' chỉ còn {$product->stock} trong kho.",
+                    ], 422);
+                }
+            }
+
+            $totalAmount = $cartItems->sum(fn($item) =>
+                ($products[$item->product_id]->sale_price ?? $products[$item->product_id]->price) * $item->quantity
             );
 
             $discountAmount = 0;
@@ -115,12 +136,12 @@ class OrderController extends Controller
                         'message' => 'Đơn hàng tối thiểu ' . number_format($coupon->min_order, 0, ',', '.') . 'đ để áp dụng mã này.',
                     ], 422);
                 }
+
                 $discountAmount = $coupon->calculateDiscount((float) $totalAmount);
             }
 
             $finalAmount = $totalAmount - $discountAmount;
 
-            // Tạo đơn hàng
             $order = Order::create([
                 'user_id'          => $userId,
                 'order_code'       => 'ORD-' . strtoupper(Str::random(10)),
@@ -137,29 +158,25 @@ class OrderController extends Controller
                 'note'             => $request->note,
             ]);
 
-            // Tạo order items + trừ tồn kho
             foreach ($cartItems as $item) {
-                $unitPrice = $item->product->sale_price ?? $item->product->price;
+                $product = $products[$item->product_id];
+                $unitPrice = $product->sale_price ?? $product->price;
 
                 OrderItem::create([
                     'order_id'     => $order->id,
                     'product_id'   => $item->product_id,
-                    'product_name' => $item->product->name,
-                    'product_sku'  => $item->product->sku,
+                    'product_name' => $product->name,
+                    'product_sku'  => $product->sku,
                     'quantity'     => $item->quantity,
                     'unit_price'   => $unitPrice,
                     'total_price'  => $unitPrice * $item->quantity,
                 ]);
 
-                // Trừ tồn kho
-                Product::where('id', $item->product_id)
-                    ->decrement('stock', $item->quantity);
+                $product->decrement('stock', $item->quantity);
             }
 
-            // Xóa giỏ hàng
             Cart::where('user_id', $userId)->delete();
 
-            // Tăng lượt sử dụng mã giảm giá
             if ($coupon) {
                 $coupon->increment('usage_count');
             }
@@ -171,9 +188,9 @@ class OrderController extends Controller
                 'message' => 'Đặt hàng thành công!',
                 'data'    => $order->load('items'),
             ], 201);
-
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json([
                 'success' => false,
                 'message' => 'Đặt hàng thất bại. Vui lòng thử lại.',
@@ -182,14 +199,13 @@ class OrderController extends Controller
         }
     }
 
-    // ─── HỦY ĐƠN HÀNG ───────────────────────────────────
     public function cancel(Request $request, $id)
     {
-        $order = Order::where('id', $id)
+        $order = Order::with('items')
+            ->where('id', $id)
             ->where('user_id', $request->user()->id)
             ->firstOrFail();
 
-        // Chỉ hủy được khi đang pending
         if (!in_array($order->status, ['pending'])) {
             return response()->json([
                 'success' => false,
@@ -198,17 +214,34 @@ class OrderController extends Controller
         }
 
         DB::transaction(function () use ($order) {
-            // Hoàn lại tồn kho
-            foreach ($order->items as $item) {
-                Product::where('id', $item->product_id)
-                    ->increment('stock', $item->quantity);
-            }
+            $order->restoreStock();
             $order->update(['status' => 'cancelled']);
         });
 
         return response()->json([
             'success' => true,
             'message' => 'Hủy đơn hàng thành công!',
+        ]);
+    }
+
+    public function destroy(Request $request, $id)
+    {
+        $order = Order::where('id', $id)
+            ->where('user_id', $request->user()->id)
+            ->firstOrFail();
+
+        if ($order->status !== 'cancelled') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Chỉ có thể xóa đơn hàng đã hủy.',
+            ], 422);
+        }
+
+        $order->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Xóa đơn hàng thành công!',
         ]);
     }
 }

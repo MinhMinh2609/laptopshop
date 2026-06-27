@@ -7,7 +7,7 @@
         <header class="flex items-center justify-between gap-4 border-b border-slate-200 px-4 py-3">
           <div>
             <h2 class="text-base font-black text-slate-950">So sánh laptop</h2>
-            <p class="text-xs text-slate-500">Chọn tối đa 4 sản phẩm từ danh sách sản phẩm.</p>
+            <p class="text-xs text-slate-500">Chọn tối đa 3 sản phẩm từ danh sách sản phẩm.</p>
           </div>
 
           <div class="flex items-center gap-2">
@@ -64,7 +64,7 @@
                     <p class="mt-1 text-sm font-black text-red-600">{{ formatPrice(product.sale_price || product.price) }}</p>
                   </div>
                 </th>
-                <th v-if="compareStore.count < 4" class="sticky top-0 z-10 min-w-40 border-l border-dashed border-slate-200 bg-slate-50 p-3 text-center text-slate-400">
+                <th v-if="compareStore.count < MAX_COMPARE" class="sticky top-0 z-10 min-w-40 border-l border-dashed border-slate-200 bg-slate-50 p-3 text-center text-slate-400">
                   Thêm từ card sản phẩm
                 </th>
               </tr>
@@ -79,7 +79,7 @@
                 >
                   {{ product[row.key] || 'Chưa cập nhật' }}
                 </td>
-                <td v-if="compareStore.count < 4" class="border-l border-dashed border-slate-200 bg-slate-50"></td>
+                <td v-if="compareStore.count < MAX_COMPARE" class="border-l border-dashed border-slate-200 bg-slate-50"></td>
               </tr>
             </tbody>
           </table>
@@ -92,7 +92,7 @@
 <script setup>
 import { onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
-import { useCompareStore } from '@/stores/compare'
+import { MAX_COMPARE, useCompareStore } from '@/stores/compare'
 import { imageUrl } from '@/utils/image'
 
 const compareStore = useCompareStore()

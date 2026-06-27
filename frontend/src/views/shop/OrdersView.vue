@@ -71,6 +71,10 @@
               class="text-xs px-3 py-1.5 border border-red-300 text-red-500 rounded-lg hover:bg-red-50 transition">
               Hủy đơn
             </button>
+            <button v-if="order.status === 'cancelled'" @click="deleteOrder(order.id)"
+              class="text-xs px-3 py-1.5 border border-red-300 text-red-500 rounded-lg hover:bg-red-50 transition">
+              Xóa đơn
+            </button>
             <RouterLink :to="`/orders/${order.order_code}`"
               class="text-xs px-3 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition">
               Xem chi tiết →
@@ -135,6 +139,15 @@ async function cancelOrder(id) {
     toast.success('Đã hủy đơn hàng!')
     fetchOrders()
   } catch (e) { toast.error(e.response?.data?.message || 'Không thể hủy đơn hàng.') }
+}
+
+async function deleteOrder(id) {
+  if (!confirm('Bạn chắc chắn muốn xóa đơn hàng đã hủy này?')) return
+  try {
+    await api.delete(`/orders/${id}`)
+    toast.success('Đã xóa đơn hàng!')
+    fetchOrders()
+  } catch (e) { toast.error(e.response?.data?.message || 'Không thể xóa đơn hàng.') }
 }
 
 watch([activeTab, currentPage], fetchOrders)

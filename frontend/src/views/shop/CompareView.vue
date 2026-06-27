@@ -1,7 +1,7 @@
 <template>
   <div class="max-w-7xl mx-auto px-4 py-8">
     <h1 class="text-2xl font-bold text-gray-800 mb-2">⚖️ So Sánh Laptop</h1>
-    <p class="text-gray-500 text-sm mb-6">Chọn tối đa 4 sản phẩm để so sánh</p>
+    <p class="text-gray-500 text-sm mb-6">Chọn tối đa 3 sản phẩm để so sánh</p>
 
     <!-- Tìm và thêm sản phẩm -->
     <div class="bg-white rounded-2xl border p-5 mb-6">
@@ -70,7 +70,7 @@
             </td>
 
             <!-- Slot trống -->
-            <td v-if="selected.length < 4"
+            <td v-if="selected.length < maxCompare"
               class="p-3 bg-gray-50 border-l border-dashed border-gray-200 text-center min-w-40">
               <div class="py-8 text-gray-300">
                 <p class="text-3xl mb-1">+</p>
@@ -89,7 +89,7 @@
               {{ p[spec.key] || '—' }}
             </td>
 
-            <td v-if="selected.length < 4"
+            <td v-if="selected.length < maxCompare"
               class="border-l border-dashed border-gray-200 bg-gray-50"></td>
           </tr>
         </tbody>
@@ -115,6 +115,7 @@ const router    = useRouter()
 const searchQ       = ref('')
 const searchResults = ref([])
 const selected      = ref([])
+const maxCompare    = 3
 
 const specRows = [
   { key: 'cpu',     label: 'Bộ vi xử lý' },
@@ -152,8 +153,8 @@ async function searchProducts() {
 }
 
 function addProduct(p) {
-  if (selected.value.length >= 4) {
-    toast.warning('Chỉ so sánh tối đa 4 sản phẩm!')
+  if (selected.value.length >= maxCompare) {
+    toast.warning('Chỉ so sánh tối đa 3 sản phẩm!')
     return
   }
   if (selected.value.find(s => s.id === p.id)) {

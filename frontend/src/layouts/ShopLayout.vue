@@ -4,7 +4,7 @@
       <div class="border-b border-slate-100 bg-slate-950 text-white">
         <div class="mx-auto flex h-9 max-w-7xl items-center justify-between px-4 text-xs sm:px-6 lg:px-8">
           <p class="font-medium">Hỗ trợ trả góp | So sánh cấu hình | Tư vấn chọn laptop theo nhu cầu</p>
-          <button @click="compareStore.openPopup()" class="hidden font-semibold text-orange-300 hover:text-orange-200 sm:block">
+          <button v-if="false" @click="compareStore.openPopup()" class="hidden font-semibold text-orange-300 hover:text-orange-200 sm:block">
             So sánh laptop
           </button>
         </div>

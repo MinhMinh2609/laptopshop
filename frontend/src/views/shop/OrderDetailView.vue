@@ -119,6 +119,9 @@
       <div v-if="order.status === 'pending'" class="text-center">
         <button @click="cancelOrder" class="btn-danger text-sm">❌ Hủy Đơn Hàng</button>
       </div>
+      <div v-if="order.status === 'cancelled'" class="text-center">
+        <button @click="deleteOrder" class="btn-danger text-sm">Xóa đơn hàng</button>
+      </div>
     </div>
 
     <div v-else class="text-center py-20">
@@ -203,6 +206,15 @@ async function cancelOrder() {
     toast.success('Đã hủy đơn hàng!')
     order.value.status = 'cancelled'
   } catch (e) { toast.error(e.response?.data?.message || 'Không thể hủy.') }
+}
+
+async function deleteOrder() {
+  if (!confirm('Bạn chắc chắn muốn xóa đơn hàng đã hủy này?')) return
+  try {
+    await api.delete(`/orders/${order.value.id}`)
+    toast.success('Đã xóa đơn hàng!')
+    router.push('/orders')
+  } catch (e) { toast.error(e.response?.data?.message || 'Không thể xóa đơn hàng.') }
 }
 
 async function payVNPay() {

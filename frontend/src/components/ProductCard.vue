@@ -137,7 +137,7 @@ async function addToCart() {
 function addCompare() {
   const result = compareStore.add(props.product)
   if (result.reason === 'limit') {
-    toast.warning('Chỉ so sánh tối đa 4 sản phẩm.')
+    toast.warning('Chỉ so sánh tối đa 3 sản phẩm.')
   }
   if (result.reason === 'exists') {
     toast.info('Sản phẩm đã nằm trong danh sách so sánh.')

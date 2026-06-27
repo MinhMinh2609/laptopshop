@@ -103,8 +103,8 @@ async function fetchOrders() {
 
 async function updateStatus(order, status) {
   try {
-    await api.patch(`/admin/orders/${order.id}/status`, { status })
-    order.status = status
+    const res = await api.patch(`/admin/orders/${order.id}/status`, { status })
+    Object.assign(order, res.data.data)
     toast.success('Đã cập nhật trạng thái!')
   } catch (e) { toast.error(e.response?.data?.message || 'Thao tác thất bại.') }
 }
