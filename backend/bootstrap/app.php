@@ -60,4 +60,21 @@ return Application::configure(basePath: dirname(__DIR__))
             }
         });
 
+        // Catch-all: mọi exception khác trên API route đều trả JSON (không trả HTML)
+        $exceptions->render(function (\Throwable $e, $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                \Illuminate\Support\Facades\Log::error('API unhandled exception', [
+                    'url'     => $request->fullUrl(),
+                    'message' => $e->getMessage(),
+                    'class'   => get_class($e),
+                    'file'    => $e->getFile(),
+                    'line'    => $e->getLine(),
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Lỗi máy chủ. Vui lòng thử lại.',
+                ], 500);
+            }
+        });
+
     })->create();
