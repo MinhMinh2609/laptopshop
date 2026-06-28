@@ -12,8 +12,14 @@
 
       <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div class="flex h-16 items-center justify-between gap-4">
-          <RouterLink to="/" class="flex shrink-0 items-center">
-            <img :src="logoUrl" alt="LaptopShop" class="h-12 w-auto" />
+          <RouterLink to="/" class="flex shrink-0 items-center gap-3">
+            <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-950 text-sm font-black text-white">
+              ML
+            </div>
+            <div>
+              <p class="text-lg font-black leading-5 tracking-tight text-slate-950">Laptop Shop</p>
+              <p class="text-xs font-medium text-slate-500">Laptop chính hãng</p>
+            </div>
           </RouterLink>
 
           <div class="hidden flex-1 md:block">
@@ -160,7 +166,7 @@
         </div>
       </div>
       <div class="border-t border-white/10 py-4 text-center text-xs text-slate-500">
-        © 2026 Minh Laptop. Giá và khuyến mãi có thể thay đổi theo từng thời điểm.
+        © 2026 Laptop Shop. Giá và khuyến mãi có thể thay đổi theo từng thời điểm.
       </div>
     </footer>
 
@@ -177,7 +183,6 @@ import { useCartStore } from '@/stores/cart'
 import { useCompareStore } from '@/stores/compare'
 import ChatbotWidget from '@/components/ChatbotWidget.vue'
 import CompareTray from '@/components/CompareTray.vue'
-import logoUrl from '@/assets/logo-laptopshop.svg'
 
 const router = useRouter()
 const authStore = useAuthStore()
