@@ -127,12 +127,14 @@
 import { ref, nextTick, watch } from 'vue'
 import api from '@/services/api'
 import { imageUrl } from '@/utils/image'
+import { useCompareStore } from '@/stores/compare'
 
 const isOpen          = ref(false)
 const loading         = ref(false)
 const inputMessage    = ref('')
 const messagesContainer = ref(null)
 const inputEl = ref(null)
+const compareStore = useCompareStore()
 const messages        = ref([
   { role: 'assistant', content: 'Xin chào! Tôi là AI tư vấn laptop. Tôi có thể giúp bạn tìm laptop phù hợp với nhu cầu và ngân sách. Bạn cần tư vấn gì không? 😊' }
 ])
@@ -140,6 +142,7 @@ const messages        = ref([
 const suggestions = ['Laptop dưới 15 triệu', 'Laptop gaming tốt nhất', 'Laptop cho sinh viên', 'So sánh cấu hình']
 
 const chatSessionId = getChatSessionId()
+compareStore.initialize()
 
 async function sendMessage() {
   const text = inputMessage.value.trim()
@@ -155,6 +158,7 @@ async function sendMessage() {
       message:  text,
       history:  messages.value.slice(-6).map(m => ({ role: m.role, content: m.content })),
       session_id: chatSessionId,
+      compare_product_ids: compareStore.items.map(product => product.id),
     })
     messages.value.push({
       role: 'assistant',

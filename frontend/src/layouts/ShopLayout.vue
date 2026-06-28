@@ -12,14 +12,8 @@
 
       <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div class="flex h-16 items-center justify-between gap-4">
-          <RouterLink to="/" class="flex shrink-0 items-center gap-3">
-            <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-950 text-sm font-black text-white">
-              ML
-            </div>
-            <div>
-              <p class="text-lg font-black leading-5 tracking-tight text-slate-950">Minh Laptop</p>
-              <p class="text-xs font-medium text-slate-500">Laptop chính hãng</p>
-            </div>
+          <RouterLink to="/" class="flex shrink-0 items-center">
+            <img :src="logoUrl" alt="LaptopShop" class="h-12 w-auto" />
           </RouterLink>
 
           <div class="hidden flex-1 md:block">
@@ -134,7 +128,7 @@
     <footer class="mt-12 bg-slate-950 text-slate-300">
       <div class="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 md:grid-cols-4 lg:px-8">
         <div class="md:col-span-1">
-          <h3 class="text-lg font-black text-white">Minh Laptop</h3>
+          <h3 class="text-lg font-black text-white">Laptop Shop</h3>
           <p class="mt-3 text-sm leading-6 text-slate-400">
             Cửa hàng laptop cho học tập, văn phòng, gaming và đồ họa. Ưu tiên tư vấn đúng nhu cầu, thông tin giá và cấu hình minh bạch.
           </p>
@@ -183,6 +177,7 @@ import { useCartStore } from '@/stores/cart'
 import { useCompareStore } from '@/stores/compare'
 import ChatbotWidget from '@/components/ChatbotWidget.vue'
 import CompareTray from '@/components/CompareTray.vue'
+import logoUrl from '@/assets/logo-laptopshop.svg'
 
 const router = useRouter()
 const authStore = useAuthStore()

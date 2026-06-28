@@ -36,7 +36,7 @@
               <p class="mt-0.5 text-xs text-slate-300">thanh toán linh hoạt</p>
             </div>
             <div class="rounded-lg border border-white/10 bg-white/10 p-4 text-center transition hover:border-orange-300/40 hover:bg-white/15">
-              <p class="font-bold text-white">4 sản phẩm</p>
+              <p class="font-bold text-white">3 sản phẩm</p>
               <p class="mt-0.5 text-xs text-slate-300">so sánh cấu hình</p>
             </div>
             <div class="rounded-lg border border-white/10 bg-white/10 p-4 text-center transition hover:border-orange-300/40 hover:bg-white/15">
