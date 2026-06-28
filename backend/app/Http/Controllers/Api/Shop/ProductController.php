@@ -73,24 +73,55 @@ class ProductController extends Controller
     // ─── TÌM KIẾM NÂNG CAO ───────────────────────────────
     public function search(Request $request)
     {
-        $keyword = $request->q;
+        $keyword = trim((string) $request->q);
 
-        if (!$keyword || strlen($keyword) < 2) {
+        if (!$keyword || mb_strlen($keyword) < 2) {
             return response()->json(['success' => false, 'message' => 'Từ khóa tìm kiếm quá ngắn.'], 422);
         }
 
-        $products = Product::with(['brand', 'category'])
+        $priceFilter = $this->extractPriceFilter($keyword);
+        $terms = $this->extractSearchTerms($keyword);
+
+        $query = Product::with(['brand', 'category', 'images'])
             ->where('is_active', 1)
-            ->where(function($q) use ($keyword) {
-                $q->where('name', 'like', "%{$keyword}%")
-                  ->orWhere('cpu',     'like', "%{$keyword}%")
-                  ->orWhere('ram',     'like', "%{$keyword}%")
-                  ->orWhere('storage', 'like', "%{$keyword}%")
-                  ->orWhere('sku',     'like', "%{$keyword}%")
-                  ->orWhereHas('brand',    fn($b) => $b->where('name', 'like', "%{$keyword}%"))
-                  ->orWhereHas('category', fn($c) => $c->where('name', 'like', "%{$keyword}%"));
-            })
-            ->orderBy('views', 'desc')
+            ->when($priceFilter['min'], fn($q, $min) => $q->whereRaw('COALESCE(sale_price, price) >= ?', [$min]))
+            ->when($priceFilter['max'], fn($q, $max) => $q->whereRaw('COALESCE(sale_price, price) <= ?', [$max]));
+
+        if (count($terms)) {
+            $query->where(function($q) use ($terms) {
+                foreach ($terms as $termGroup) {
+                    foreach ($this->expandSearchTerm($termGroup) as $term) {
+                        $like = "%{$term}%";
+                        $compactLike = '%' . $this->compactSearchTerm($term) . '%';
+
+                        $q->orWhere('name',        'like', $like)
+                          ->orWhere('description', 'like', $like)
+                          ->orWhere('cpu',         'like', $like)
+                          ->orWhere('ram',         'like', $like)
+                          ->orWhere('storage',     'like', $like)
+                          ->orWhere('display',     'like', $like)
+                          ->orWhere('gpu',         'like', $like)
+                          ->orWhere('os',          'like', $like)
+                          ->orWhere('sku',         'like', $like)
+                          ->orWhereHas('brand',    fn($b) => $b->where('name', 'like', $like))
+                          ->orWhereHas('category', fn($c) => $c->where('name', 'like', $like));
+
+                        if ($compactLike !== '%%') {
+                            foreach (['name', 'cpu', 'ram', 'storage', 'gpu', 'display', 'sku'] as $column) {
+                                $q->orWhereRaw($this->compactColumnSql($column) . ' like ?', [$compactLike]);
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        $products = $query
+            ->when(
+                $priceFilter['min'] || $priceFilter['max'],
+                fn($q) => $q->orderByRaw('COALESCE(sale_price, price) asc'),
+                fn($q) => $q->orderBy('views', 'desc')
+            )
             ->paginate($request->per_page ?? 12);
 
         return response()->json([
@@ -98,6 +129,130 @@ class ProductController extends Controller
             'keyword' => $keyword,
             'data'    => $products,
         ]);
+    }
+
+    // Search helpers
+    private function extractSearchTerms(string $keyword): array
+    {
+        $normalized = $this->normalizeSearchText($keyword);
+        $normalized = preg_replace('/\d+(?:[\.,]\d+)?\s*(?:tr|trieu|m)\b/u', ' ', $normalized);
+        $normalized = preg_replace('/[^\pL\pN]+/u', ' ', $normalized);
+
+        $stopWords = [
+            'laptop', 'may', 'tinh', 'maytinh', 'tim', 'kiem', 'mua', 'ban',
+            'gia', 'ngan', 'sach', 'tam', 'khoang', 'duoi', 'tren', 'tu',
+            'den', 'toi', 'nho', 'hon', 'lon', 'da', 'thieu', 'tr', 'trieu',
+            'cho', 'can', 'co', 'khong', 'va', 'hoac', 'theo',
+        ];
+
+        $terms = array_filter(
+            explode(' ', $normalized),
+            fn($term) => mb_strlen($term) >= 2 && !in_array($term, $stopWords, true)
+        );
+
+        return array_values(array_unique($terms));
+    }
+
+    private function expandSearchTerm(string $term): array
+    {
+        $terms = [$term];
+        $compact = $this->compactSearchTerm($term);
+
+        if ($term === 'ssd') {
+            $terms = array_merge($terms, ['nvme', 'pcie']);
+        }
+
+        if (preg_match('/^i([3579])$/', $compact, $matches)) {
+            $terms[] = "core i{$matches[1]}";
+            $terms[] = "intel core i{$matches[1]}";
+        }
+
+        if (preg_match('/^r([3579])$/', $compact, $matches)) {
+            $terms[] = "ryzen {$matches[1]}";
+            $terms[] = "ryzen{$matches[1]}";
+        }
+
+        if (preg_match('/^(\d+)(gb|g)$/', $compact, $matches)) {
+            $terms[] = "{$matches[1]} gb";
+            $terms[] = $matches[1];
+        }
+
+        if (preg_match('/^(\d+)tb$/', $compact, $matches)) {
+            $terms[] = "{$matches[1]} tb";
+        }
+
+        return array_values(array_unique($terms));
+    }
+
+    private function compactSearchTerm(string $term): string
+    {
+        return preg_replace('/[^a-z0-9]+/u', '', $this->normalizeSearchText($term));
+    }
+
+    private function compactColumnSql(string $column): string
+    {
+        return "lower(replace(replace(replace(coalesce({$column}, ''), ' ', ''), '-', ''), '.', ''))";
+    }
+
+    private function extractPriceFilter(string $keyword): array
+    {
+        $text = $this->normalizeSearchText($keyword);
+        $number = '(\d+(?:[\.,]\d+)?)';
+        $unit = '(?:tr|trieu|m)';
+
+        if (preg_match("/{$number}\s*(?:-|den|toi)\s*{$number}\s*{$unit}/u", $text, $matches)) {
+            return [
+                'min' => $this->millionToVnd($matches[1]),
+                'max' => $this->millionToVnd($matches[2]),
+            ];
+        }
+
+        if (preg_match("/(?:duoi|nho hon|toi da|<=|<)\s*{$number}\s*{$unit}/u", $text, $matches)) {
+            return [
+                'min' => null,
+                'max' => $this->millionToVnd($matches[1]),
+            ];
+        }
+
+        if (preg_match("/(?:tren|lon hon|toi thieu|>=|>)\s*{$number}\s*{$unit}/u", $text, $matches)) {
+            return [
+                'min' => $this->millionToVnd($matches[1]),
+                'max' => null,
+            ];
+        }
+
+        if ($this->hasBudgetSignal($text) && preg_match("/{$number}\s*{$unit}/u", $text, $matches)) {
+            return [
+                'min' => null,
+                'max' => $this->millionToVnd($matches[1]),
+            ];
+        }
+
+        return ['min' => null, 'max' => null];
+    }
+
+    private function normalizeSearchText(string $text): string
+    {
+        $text = mb_strtolower($text, 'UTF-8');
+        $text = str_replace(['đ', 'Đ'], ['d', 'd'], $text);
+        $converted = function_exists('iconv')
+            ? @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $text)
+            : false;
+
+        return $converted ?: $text;
+    }
+
+    private function millionToVnd(string $value): int
+    {
+        return (int) round(((float) str_replace(',', '.', $value)) * 1000000);
+    }
+
+    private function hasBudgetSignal(string $text): bool
+    {
+        return str_contains($text, 'ngan sach')
+            || str_contains($text, 'gia')
+            || str_contains($text, 'trieu')
+            || preg_match('/\d+\s*(m|tr|trieu)/u', $text);
     }
 
     // ─── CHI TIẾT SẢN PHẨM ──────────────────────────────
