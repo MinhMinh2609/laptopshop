@@ -105,7 +105,7 @@ async function updateStatus(order, status) {
   try {
     const res = await api.patch(`/admin/orders/${order.id}/status`, { status })
     Object.assign(order, res.data.data)
-    toast.success('Đã cập nhật trạng thái!')
+    toast.success(res.data.mail_sent ? 'Đã cập nhật trạng thái và gửi email!' : 'Đã cập nhật trạng thái!')
   } catch (e) { toast.error(e.response?.data?.message || 'Thao tác thất bại.') }
 }
 

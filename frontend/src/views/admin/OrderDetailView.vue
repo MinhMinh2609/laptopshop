@@ -131,7 +131,7 @@ async function updateStatus() {
     const res = await api.patch(`/admin/orders/${order.value.id}/status`, { status: newStatus.value })
     order.value = res.data.data
     newStatus.value = order.value.status
-    toast.success('Cập nhật trạng thái thành công!')
+    toast.success(res.data.mail_sent ? 'Cập nhật trạng thái và gửi email thành công!' : 'Cập nhật trạng thái thành công!')
   } catch (e) { toast.error(e.response?.data?.message || 'Thao tác thất bại.') }
 }
 
