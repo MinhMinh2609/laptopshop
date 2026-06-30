@@ -70,10 +70,20 @@ return Application::configure(basePath: dirname(__DIR__))
                     'file'    => $e->getFile(),
                     'line'    => $e->getLine(),
                 ]);
+                $origin = $request->header('Origin');
+                $allowedOrigins = config('cors.allowed_origins', []);
+                $allowOrigin = in_array($origin, $allowedOrigins) ? $origin : '';
+
                 return response()->json([
                     'success' => false,
-                    'message' => 'Lỗi máy chủ. Vui lòng thử lại.',
-                ], 500);
+                    'message' => config('app.debug')
+                        ? '[DEBUG] ' . $e->getMessage()
+                        : 'Lỗi máy chủ. Vui lòng thử lại.',
+                ], 500)->withHeaders(array_filter([
+                    'Access-Control-Allow-Origin'      => $allowOrigin,
+                    'Access-Control-Allow-Credentials' => 'true',
+                    'Access-Control-Allow-Headers'     => 'Content-Type, Authorization, X-Requested-With',
+                ]));
             }
         });
 
