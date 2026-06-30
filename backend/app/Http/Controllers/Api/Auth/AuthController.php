@@ -112,28 +112,38 @@ class AuthController extends Controller
             . '&email=' . urlencode($request->email);
 
         // Gửi email
-        Mail::send([], [], function ($message) use ($user, $resetUrl) {
-            $message->to($user->email, $user->name)
-                ->subject('🔐 Đặt Lại Mật Khẩu - Laptop Shop')
-                ->html("
-                    <div style='font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:30px;'>
-                        <h2 style='color:#2563eb;'>🔐 Đặt Lại Mật Khẩu</h2>
-                        <p>Xin chào <strong>{$user->name}</strong>,</p>
-                        <p>Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản của bạn.</p>
-                        <p>Nhấn vào nút bên dưới để đặt lại mật khẩu (link có hiệu lực trong <strong>60 phút</strong>):</p>
-                        <div style='text-align:center;margin:30px 0;'>
-                            <a href='{$resetUrl}'
-                               style='background:#2563eb;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:16px;'>
-                                Đặt Lại Mật Khẩu
-                            </a>
+        try {
+            Mail::send([], [], function ($message) use ($user, $resetUrl) {
+                $message->to($user->email, $user->name)
+                    ->subject('🔐 Đặt Lại Mật Khẩu - Laptop Shop')
+                    ->html("
+                        <div style='font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:30px;'>
+                            <h2 style='color:#2563eb;'>🔐 Đặt Lại Mật Khẩu</h2>
+                            <p>Xin chào <strong>{$user->name}</strong>,</p>
+                            <p>Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản của bạn.</p>
+                            <p>Nhấn vào nút bên dưới để đặt lại mật khẩu (link có hiệu lực trong <strong>60 phút</strong>):</p>
+                            <div style='text-align:center;margin:30px 0;'>
+                                <a href='{$resetUrl}'
+                                   style='background:#2563eb;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:16px;'>
+                                    Đặt Lại Mật Khẩu
+                                </a>
+                            </div>
+                            <p style='color:#6b7280;font-size:13px;'>Nếu bạn không yêu cầu, hãy bỏ qua email này.</p>
+                            <p style='color:#6b7280;font-size:13px;'>Hoặc copy link: <a href='{$resetUrl}'>{$resetUrl}</a></p>
+                            <hr style='margin:20px 0;border:none;border-top:1px solid #e5e7eb;'>
+                            <p style='color:#9ca3af;font-size:12px;text-align:center;'>© 2024 Laptop Shop DATN - Đào Duy Minh</p>
                         </div>
-                        <p style='color:#6b7280;font-size:13px;'>Nếu bạn không yêu cầu, hãy bỏ qua email này.</p>
-                        <p style='color:#6b7280;font-size:13px;'>Hoặc copy link: <a href='{$resetUrl}'>{$resetUrl}</a></p>
-                        <hr style='margin:20px 0;border:none;border-top:1px solid #e5e7eb;'>
-                        <p style='color:#9ca3af;font-size:12px;text-align:center;'>© 2024 Laptop Shop DATN - Đào Duy Minh</p>
-                    </div>
-                ");
-        });
+                    ");
+            });
+        } catch (\Exception $e) {
+            \Log::error('Forgot password mail error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => config('app.debug')
+                    ? '[DEBUG] Lỗi gửi email: ' . $e->getMessage()
+                    : 'Không thể gửi email. Vui lòng thử lại sau.',
+            ], 500);
+        }
 
         return response()->json([
             'success' => true,
