@@ -70,7 +70,18 @@ async function sendReset() {
     await api.post('/auth/forgot-password', { email: email.value })
     sent.value = true
   } catch (e) {
-    errorMsg.value = e.response?.data?.message || 'Không tìm thấy email này trong hệ thống.'
+    const status = e.response?.status
+    const serverMsg = e.response?.data?.message
+
+    if (status === 422) {
+      errorMsg.value = 'Email này không tồn tại trong hệ thống.'
+    } else if (status === 500) {
+      errorMsg.value = serverMsg || 'Lỗi máy chủ khi gửi email. Vui lòng thử lại sau.'
+    } else if (!e.response) {
+      errorMsg.value = 'Không kết nối được máy chủ. Kiểm tra internet hoặc thử lại.'
+    } else {
+      errorMsg.value = serverMsg || 'Có lỗi xảy ra. Vui lòng thử lại.'
+    }
   } finally {
     loading.value = false
   }
